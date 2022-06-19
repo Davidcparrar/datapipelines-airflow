@@ -24,3 +24,31 @@ Run and try again
 ```bash
 docker-compose down --volumes --rmi all
 ```
+
+Permissions:
+
+VS Code: NoPermissions (FileSystemError): Error: EACCES: permission denied
+
+[Solved](https://stackoverflow.com/questions/66496890/vs-code-nopermissions-filesystemerror-error-eacces-permission-denied)
+
+```
+sudo chown -R username path 
+```
+Connection Timeout:
+
+Add keepalive to connection. [Solved](https://stackoverflow.com/questions/24130305/postgres-ssl-syscall-error-eof-detected-with-python-and-psycopg)
+
+```python
+keepalive_kwargs = {
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 5,
+    "keepalives_count": 5,
+    }
+```
+
+Reviewing loading errors in Redshift
+
+```sql
+SELECT filename, starttime, colname, type, raw_line, col_length, err_code, err_reason FROM stl_load_errors ORDER BY starttime DESC;
+```
