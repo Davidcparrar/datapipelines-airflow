@@ -2,7 +2,11 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.subdag_operator import SubDagOperator
-from airflow.operators import StageToRedshiftOperator, LoadFactOperator
+from airflow.operators import (
+    StageToRedshiftOperator,
+    LoadFactOperator,
+    DataQualityOperator,
+)
 from helpers import SqlQueries
 from load_dimension_subdag import load_dimensions_dag
 
@@ -80,15 +84,37 @@ load_dimension_task = SubDagOperator(
         task_id="load_dimensions",
         tables=tables,
         redshift_conn_id="redshift",
-        tables_quality=list(tables.keys()),
-        check_null_columns=[
-            ("users", "userid"),
-        ],
         append=False,
         start_date=default_args["start_date"],
     ),
     task_id="load_dimensions",
     dag=dag,
+)
+
+tables_quality = list(tables.keys())
+
+data_quality_template = [
+    {
+        "name": "Empty rows",
+        "sql": "SELECT COUNT(*) FROM public.{table}",
+        "result": 0,
+        "operator": "gt",
+        "format": [{"table": x for x in tables_quality}],
+    },
+    {
+        "name": "Null rows",
+        "sql": "SELECT COUNT(*) - COUNT({column}) FROM public.{table}",
+        "result": 0,
+        "operator": "eq",
+        "format": [{"table": "users", "column": "userid"}],
+    },
+]
+
+run_quality_checks = DataQualityOperator(
+    task_id="Run_data_quality_checks",
+    dag=dag,
+    redshift_conn_id="redshift",
+    template=data_quality_template,
 )
 
 end_operator = DummyOperator(task_id="Stop_execution", dag=dag)
@@ -98,4 +124,5 @@ start_operator >> stage_songs_to_redshift
 stage_songs_to_redshift >> load_songplays_table
 stage_events_to_redshift >> load_songplays_table
 load_songplays_table >> load_dimension_task
-load_dimension_task >> end_operator
+load_dimension_task >> run_quality_checks
+run_quality_checks >> end_operator

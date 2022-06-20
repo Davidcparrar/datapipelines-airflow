@@ -11,54 +11,64 @@ class DataQualityOperator(BaseOperator):
     def __init__(
         self,
         redshift_conn_id="",
-        tables=None,
-        table_nnull_columns=None,
+        template=None,
         *args,
         **kwargs,
     ):
 
         super(DataQualityOperator, self).__init__(*args, **kwargs)
         self.redshift_conn_id = redshift_conn_id
-        self.tables = tables
-        self.table_nnull_columns = table_nnull_columns
+        self.template = template
 
-    def check_rows(self, redshift):
-        """Check for empty tables
-
-        Args:
-            redshift (PostgresHook): Redshift connection
-
-        Raises:
-            ValueError: When no records are found
-        """
-        for table in self.tables:
-            records = redshift.get_records(
-                f"SELECT COUNT(*) FROM public.{table}"
-            )
-
-            if len(records) < 1 or len(records[0]) < 1:
-                raise ValueError(
-                    f"Data quality check failed. {table} returned no results"
-                )
-
-    def check_null(self, redshift):
-        """Check for nulls in columns
+    def process_template(self, redshift):
+        """Process template passed as argument for quality checks
 
         Args:
-            redshift (PostgresHook): Redshift connection
+            redshift (PostgresHook): Connection to Redshift Database
 
         Raises:
-            ValueError: When nulls are found
+            ValueError: When template has not been defined by the user
+            ValueError: When the quality check fails
+            ValueError: When non supported operator is passed on the template
         """
-        for table, column in self.table_nnull_columns:
-            records = redshift.get_records(
-                f"SELECT COUNT(*) - COUNT({column}) FROM public.{table}"
-            )
+        if self.template is None:
+            raise ValueError("No template was passed down")
 
-            if len(records) < 1 or not records[0][0] == 0:
-                raise ValueError(
-                    f"Data quality check failed. {column} from {table} may contain null values"
+        for quality_check in self.template:
+            self.log.info(f"Processing {quality_check['name']} quality check")
+            formats = quality_check.get("format")
+            for format in formats:
+                records = redshift.get_records(
+                    quality_check.get("sql").format(**format)
                 )
+
+                if quality_check.get("operator") == "eq":
+                    if not records or not records[0][0] == quality_check.get(
+                        "result"
+                    ):
+                        raise ValueError(f"Data quality check failed")
+                elif quality_check.get("operator") == "gt":
+                    if not records or not records[0][0] > quality_check.get(
+                        "result"
+                    ):
+                        raise ValueError(f"Data quality check failed")
+                elif quality_check.get("operator") == "lt":
+                    if not records or not records[0][0] < quality_check.get(
+                        "result"
+                    ):
+                        raise ValueError(f"Data quality check failed")
+                elif quality_check.get("operator") == "gte":
+                    if not records or not records[0][0] >= quality_check.get(
+                        "result"
+                    ):
+                        raise ValueError(f"Data quality check failed")
+                elif quality_check.get("operator") == "lte":
+                    if not records or not records[0][0] <= quality_check.get(
+                        "result"
+                    ):
+                        raise ValueError(f"Data quality check failed")
+                else:
+                    raise ValueError(f"Empty or Non supported operator")
 
     def execute(self, context):
         self.log.info("Running quality checks")
@@ -73,5 +83,4 @@ class DataQualityOperator(BaseOperator):
             postgres_conn_id=self.redshift_conn_id, **keepalive_kwargs
         )
 
-        self.check_rows(redshift)
-        self.check_null(redshift)
+        self.process_template(redshift)

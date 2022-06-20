@@ -1,7 +1,7 @@
 import datetime
 
 from airflow import DAG
-from airflow.operators import LoadDimensionOperator, DataQualityOperator
+from airflow.operators import LoadDimensionOperator
 from helpers import SqlQueries
 
 
@@ -10,8 +10,6 @@ def load_dimensions_dag(
     tables,
     task_id,
     redshift_conn_id,
-    tables_quality,
-    check_null_columns,
     append,
     *args,
     **kwargs,
@@ -32,18 +30,5 @@ def load_dimensions_dag(
                 append=append,
             )
         )
-
-    # Make quality checks
-    run_quality_checks = DataQualityOperator(
-        task_id="Run_data_quality_checks",
-        dag=dag,
-        redshift_conn_id=redshift_conn_id,
-        tables=tables_quality,
-        table_nnull_columns=check_null_columns,
-    )
-
-    # Create dependencies
-    for dimension in load_dimension_table:
-        dimension >> run_quality_checks
 
     return dag
