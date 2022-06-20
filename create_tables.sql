@@ -14,7 +14,7 @@ CREATE TABLE public.songplays (
 	songid varchar(256),
 	artistid varchar(256),
 	sessionid int4,
-	location varchar(256),
+	location varchar(300),
 	user_agent varchar(256),
 	CONSTRAINT songplays_pkey PRIMARY KEY (playid)
 );

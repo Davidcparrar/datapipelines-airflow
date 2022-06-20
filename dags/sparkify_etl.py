@@ -10,7 +10,6 @@ from airflow.operators import (
 )
 from helpers import SqlQueries
 
-queries = SqlQueries()
 # If the credentials arte not set in the Airflow UI, the user can set
 # them as environment variables
 # AWS_KEY = os.environ.get('AWS_KEY')
@@ -62,9 +61,15 @@ stage_songs_to_redshift = StageToRedshiftOperator(
     redshift_conn_id="redshift",
 )
 
-# load_songplays_table = LoadFactOperator(
-#     task_id="Load_songplays_fact_table", dag=dag
-# )
+load_songplays_table = LoadFactOperator(
+    task_id="Load_songplays_fact_table",
+    dag=dag,
+    table="songplays",
+    staging_songs="staging_songs",
+    staging_events="staging_events",
+    select=SqlQueries.songplay_table_insert,
+    redshift_conn_id="redshift",
+)
 
 # load_user_dimension_table = LoadDimensionOperator(
 #     task_id="Load_user_dim_table", dag=dag
@@ -90,3 +95,5 @@ stage_songs_to_redshift = StageToRedshiftOperator(
 
 start_operator >> stage_events_to_redshift
 start_operator >> stage_songs_to_redshift
+stage_songs_to_redshift >> load_songplays_table
+stage_events_to_redshift >> load_songplays_table
