@@ -10,41 +10,6 @@ from airflow.operators import (
 )
 from helpers import SqlQueries
 
-create_staging_events = """
-    CREATE TABLE public.staging_events (
-        artist varchar(256),
-        auth varchar(256),
-        firstname varchar(256),
-        gender varchar(256),
-        iteminsession int4,
-        lastname varchar(256),
-        length numeric(18,0),
-        "level" varchar(256),
-        location varchar(256),
-        "method" varchar(256),
-        page varchar(256),
-        registration numeric(18,0),
-        sessionid int4,
-        song varchar(256),
-        status int4,
-        ts int8,
-        useragent varchar(256),
-        userid int4);
-    """
-create_staging_songs = """
-    CREATE TABLE public.staging_songs (
-        num_songs int4,
-        artist_id varchar(256),
-        artist_name varchar(400),
-        artist_latitude numeric(18,0),
-        artist_longitude numeric(18,0),
-        artist_location varchar(300),
-        song_id varchar(256),
-        title varchar(300),
-        duration numeric(18,0),
-        "year" int4);
-    """
-
 queries = SqlQueries()
 # If the credentials arte not set in the Airflow UI, the user can set
 # them as environment variables
@@ -53,19 +18,20 @@ queries = SqlQueries()
 
 default_args = {
     "owner": "udacity",
-    "start_date": datetime(2019, 1, 12),
+    "start_date": datetime(2018, 11, 1),
     "retries": 3,
     "retry_delay": timedelta(300),
     "email_on_retry": False,
     "depends_on_past": False,
+    "catchup": False,
 }
 
 dag = DAG(
     "sparkify_etl_dag",
     default_args=default_args,
     description="Load and transform data in Redshift with Airflow",
-    schedule_interval="0 * * * *",
-    catchup=False,
+    # schedule_interval="0 * * * *",
+    schedule_interval="@once",
 )
 
 start_operator = DummyOperator(
@@ -76,27 +42,24 @@ stage_events_to_redshift = StageToRedshiftOperator(
     task_id="Stage_events",
     dag=dag,
     table="staging_events",
-    s3_key="log-data",
+    s3_key="log-data",  # /{execution_date.year}/{execution_date.month}/{ds}-events.json",
     s3_bucket="udacity-dend",
     json_path="log_json_path.json",
     region="us-west-2",
-    create_sql=create_staging_events,
     aws_credentials_id="aws_credentials",
     redshift_conn_id="redshift",
-    **default_args
+    provide_context=True,
 )
 
 stage_songs_to_redshift = StageToRedshiftOperator(
     task_id="Stage_songs",
     dag=dag,
     table="staging_songs",
-    s3_key="song-data/A/A/A/",
+    s3_key="song-data/A/",
     s3_bucket="udacity-dend",
     region="us-west-2",
-    create_sql=create_staging_songs,
     aws_credentials_id="aws_credentials",
     redshift_conn_id="redshift",
-    **default_args
 )
 
 # load_songplays_table = LoadFactOperator(
