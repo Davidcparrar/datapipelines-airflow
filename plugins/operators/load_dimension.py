@@ -44,5 +44,4 @@ class LoadDimensionOperator(BaseOperator):
         self.log.info("Update Data")
         sql_query = "INSERT INTO public.{}".format(self.table) + self.select
 
-        # self.log.info(sql_query)
         redshift.run(sql_query)

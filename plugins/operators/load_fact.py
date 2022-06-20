@@ -60,4 +60,4 @@ class LoadFactOperator(BaseOperator):
             )
         )
         self.log.info("Inserting records into {}".format(self.table))
-        # redshift.run(sql_query)
+        redshift.run(sql_query)

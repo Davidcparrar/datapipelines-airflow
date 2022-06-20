@@ -72,4 +72,4 @@ class StageToRedshiftOperator(BaseOperator):
         else:
             formatted_sql = formatted_sql + " JSON 'auto'"
 
-        # redshift.run(formatted_sql)
+        redshift.run(formatted_sql)
