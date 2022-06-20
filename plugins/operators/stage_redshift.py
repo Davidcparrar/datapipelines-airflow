@@ -42,16 +42,7 @@ class StageToRedshiftOperator(BaseOperator):
         aws_hook = AwsHook(self.aws_credentials_id)
         credentials = aws_hook.get_credentials()
 
-        # Preventing Redshift connection to die
-        keepalive_kwargs = {
-            "keepalives": 1,
-            "keepalives_idle": 30,
-            "keepalives_interval": 5,
-            "keepalives_count": 5,
-        }
-        redshift = PostgresHook(
-            postgres_conn_id=self.redshift_conn_id, **keepalive_kwargs
-        )
+        redshift = PostgresHook(postgres_conn_id=self.redshift_conn_id)
 
         self.log.info("Copying data from S3 to Redshift")
 

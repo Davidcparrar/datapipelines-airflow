@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import os
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.subdag_operator import SubDagOperator
@@ -37,7 +36,7 @@ stage_events_to_redshift = StageToRedshiftOperator(
     task_id="Stage_events",
     dag=dag,
     table="staging_events",
-    s3_key="log-data/{execution_date.year}/{execution_date.month}/{ds}-events.json",
+    s3_key="log_data/{execution_date.year}/{execution_date.month}/{ds}-events.json",
     s3_bucket="udacity-dend",
     json_path="log_json_path.json",
     region="us-west-2",
@@ -50,7 +49,7 @@ stage_songs_to_redshift = StageToRedshiftOperator(
     task_id="Stage_songs",
     dag=dag,
     table="staging_songs",
-    s3_key="song-data",
+    s3_key="song_data/",
     s3_bucket="udacity-dend",
     region="us-west-2",
     aws_credentials_id="aws_credentials",
@@ -84,7 +83,6 @@ load_dimension_task = SubDagOperator(
         tables_quality=list(tables.keys()),
         check_null_columns=[
             ("users", "userid"),
-            ("songs", "song_id"),
         ],
         append=False,
         start_date=default_args["start_date"],
